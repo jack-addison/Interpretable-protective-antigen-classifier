@@ -41,11 +41,11 @@ def train_baseline_models(
     y: pd.Series,
     test_size: float = config.DEFAULT_TEST_SIZE,
     random_state: int = config.DEFAULT_RANDOM_STATE,
-    use_xgboost: bool = False,
+    use_xgboost: bool = True,
     split_strategy: str = "stratified",
     groups: Optional[pd.Series] = None,
     cv_folds: int = 0,
-) -> tuple[Dict[str, Any], Dict[str, Dict[str, float]], ModelArtifacts]:
+) -> tuple[Dict[str, Any], Dict[str, Dict[str, Any]], ModelArtifacts]:
     """Train baseline classifiers and return fitted models and metrics."""
     split = _train_test_split(
         X,
@@ -57,7 +57,20 @@ def train_baseline_models(
     )
     X_train, X_test, y_train, y_test, groups_train, groups_test = split
 
-    candidate_models: Dict[str, Pipeline] = {
+    if y_train.nunique() < 2 or y_test.nunique() < 2:
+        logger.warning("Train/test split resulted in a single class; falling back to stratified split.")
+        X_train, X_test, y_train, y_test, groups_train, groups_test = _train_test_split(
+            X,
+            y,
+            test_size=test_size,
+            random_state=random_state,
+            strategy="stratified",
+            groups=None,
+        )
+        split_strategy = "stratified"
+        groups = None
+
+    candidate_models: Dict[str, Any] = {
         "log_reg": Pipeline(
             [
                 ("scaler", StandardScaler()),
@@ -87,29 +100,32 @@ def train_baseline_models(
             logger.warning("XGBoost not installed; skipping xgboost model.")
 
     fitted: Dict[str, Any] = {}
-    metrics: Dict[str, Dict[str, float]] = {}
+    metrics: Dict[str, Dict[str, Any]] = {}
 
     for name, model in candidate_models.items():
         logger.info("Training model: %s", name)
         model.fit(X_train, y_train)
         y_score = model.predict_proba(X_test)[:, 1]
-        metrics[name] = compute_classification_metrics(y_test.values, y_score)
+        metrics[name] = compute_classification_metrics(y_test.to_numpy(), y_score)
         metrics[name]["n_train"] = int(len(X_train))
         metrics[name]["n_test"] = int(len(X_test))
         metrics[name]["split_strategy"] = split_strategy
 
-        if cv_folds and cv_folds > 1:
+        if cv_folds and cv_folds > 1 and y.nunique() >= 2:
+            cv_groups = groups if split_strategy == "group" else None
             cv_obj = _make_cv(cv_folds, random_state, split_strategy, groups)
             try:
                 cv_scores = cross_val_predict(
-                    model, X, y, cv=cv_obj, method="predict_proba", groups=groups, n_jobs=-1
+                    model, X, y, cv=cv_obj, method="predict_proba", groups=cv_groups, n_jobs=-1
                 )[:, 1]
-                cv_metrics = compute_classification_metrics(y.values, cv_scores)
+                cv_metrics = compute_classification_metrics(y.to_numpy(), cv_scores)
                 metrics[name]["cv_roc_auc"] = cv_metrics["roc_auc"]
                 metrics[name]["cv_pr_auc"] = cv_metrics["pr_auc"]
                 metrics[name]["cv_folds"] = cv_folds
             except Exception as exc:
                 logger.warning("Cross-validation failed for %s: %s", name, exc)
+        elif cv_folds and cv_folds > 1:
+            logger.warning("Skipping cross-validation because the dataset has <2 classes.")
 
         fitted[name] = model
 

@@ -31,7 +31,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument("--random-state", type=int, default=config.DEFAULT_RANDOM_STATE, help="Random seed")
     parser.add_argument("--skip-psortb", action="store_true", help="Skip PSORTb feature extraction")
     parser.add_argument("--skip-shap", action="store_true", help="Skip SHAP computation")
-    parser.add_argument("--use-xgboost", action="store_true", help="Train XGBoost model if dependency is installed")
+    parser.add_argument("--disable-xgboost", action="store_true", help="Disable XGBoost even if installed")
     parser.add_argument("--split-strategy", choices=["stratified", "group"], default="stratified", help="Train/test split strategy")
     parser.add_argument("--group-column", type=str, default=config.DEFAULT_ORGANISM_COLUMN, help="Column to use for group splits")
     parser.add_argument("--cv-folds", type=int, default=0, help="Optional cross-validation folds (0 to disable)")
@@ -53,6 +53,11 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 1
 
     log_dataset_summary(data)
+    before = len(data)
+    data = data.drop_duplicates(subset=[config.DEFAULT_ID_COLUMN, config.DEFAULT_TEXT_COLUMN])
+    dropped = before - len(data)
+    if dropped:
+        logger.info("Dropped %d duplicate sequences/IDs", dropped)
 
     features, labels = build_feature_table(
         data,
@@ -78,7 +83,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         labels,
         test_size=args.test_size,
         random_state=args.random_state,
-        use_xgboost=args.use_xgboost,
+        use_xgboost=not args.disable_xgboost,
         split_strategy=args.split_strategy,
         groups=groups,
         cv_folds=args.cv_folds,
