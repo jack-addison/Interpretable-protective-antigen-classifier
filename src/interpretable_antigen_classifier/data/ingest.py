@@ -11,7 +11,13 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 import pandas as pd
-from Bio import SeqIO
+
+try:
+    from Bio import SeqIO
+
+    HAS_BIO = True
+except ImportError:  # pragma: no cover - optional dependency
+    HAS_BIO = False
 
 from interpretable_antigen_classifier import config
 from interpretable_antigen_classifier.utils.logging import get_logger
@@ -100,6 +106,9 @@ def parse_fasta_to_frame(fasta_path: Path, label: int, source: str) -> pd.DataFr
     This helper is useful once the Protegen and negative FASTA files are
     available; it is not invoked by default until data are in place.
     """
+    if not HAS_BIO:
+        raise ImportError("Biopython is required for FASTA parsing. Install with `pip install biopython`.")
+
     if not fasta_path.exists():
         raise FileNotFoundError(f"FASTA file not found: {fasta_path}")
 

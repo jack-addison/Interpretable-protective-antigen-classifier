@@ -5,9 +5,10 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.inspection import permutation_importance
 
 from interpretable_antigen_classifier.utils.logging import get_logger
@@ -90,6 +91,22 @@ def save_feature_importances(importances: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     importances.to_csv(path, index=False)
     logger.info("Saved feature importances to %s", path)
+
+
+def plot_feature_importances(importances: pd.DataFrame, path: Path, top_n: int = 20) -> None:
+    """Save a bar plot of top feature importances."""
+    if importances.empty:
+        logger.info("No feature importances to plot.")
+        return
+    subset = importances.head(top_n)
+    plt.figure(figsize=(8, max(4, top_n * 0.3)))
+    sns.barplot(data=subset, x="importance", y="feature", palette="viridis")
+    plt.title("Top feature importances")
+    plt.tight_layout()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(path, bbox_inches="tight")
+    plt.close()
+    logger.info("Saved feature importance plot to %s", path)
 
 
 def _unwrap_estimator(model: Any) -> Any:

@@ -2,14 +2,19 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, NamedTuple
+from typing import Any, Dict, NamedTuple, Optional
 
 import joblib
-import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import (
+    GroupKFold,
+    GroupShuffleSplit,
+    StratifiedKFold,
+    cross_val_predict,
+    train_test_split,
+)
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -27,6 +32,8 @@ class ModelArtifacts(NamedTuple):
     y_train: pd.Series
     X_test: pd.DataFrame
     y_test: pd.Series
+    groups_train: Optional[pd.Series]
+    groups_test: Optional[pd.Series]
 
 
 def train_baseline_models(
@@ -35,11 +42,20 @@ def train_baseline_models(
     test_size: float = config.DEFAULT_TEST_SIZE,
     random_state: int = config.DEFAULT_RANDOM_STATE,
     use_xgboost: bool = False,
+    split_strategy: str = "stratified",
+    groups: Optional[pd.Series] = None,
+    cv_folds: int = 0,
 ) -> tuple[Dict[str, Any], Dict[str, Dict[str, float]], ModelArtifacts]:
     """Train baseline classifiers and return fitted models and metrics."""
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, stratify=y, random_state=random_state
+    split = _train_test_split(
+        X,
+        y,
+        test_size=test_size,
+        random_state=random_state,
+        strategy=split_strategy,
+        groups=groups,
     )
+    X_train, X_test, y_train, y_test, groups_train, groups_test = split
 
     candidate_models: Dict[str, Pipeline] = {
         "log_reg": Pipeline(
@@ -80,9 +96,24 @@ def train_baseline_models(
         metrics[name] = compute_classification_metrics(y_test.values, y_score)
         metrics[name]["n_train"] = int(len(X_train))
         metrics[name]["n_test"] = int(len(X_test))
+        metrics[name]["split_strategy"] = split_strategy
+
+        if cv_folds and cv_folds > 1:
+            cv_obj = _make_cv(cv_folds, random_state, split_strategy, groups)
+            try:
+                cv_scores = cross_val_predict(
+                    model, X, y, cv=cv_obj, method="predict_proba", groups=groups, n_jobs=-1
+                )[:, 1]
+                cv_metrics = compute_classification_metrics(y.values, cv_scores)
+                metrics[name]["cv_roc_auc"] = cv_metrics["roc_auc"]
+                metrics[name]["cv_pr_auc"] = cv_metrics["pr_auc"]
+                metrics[name]["cv_folds"] = cv_folds
+            except Exception as exc:
+                logger.warning("Cross-validation failed for %s: %s", name, exc)
+
         fitted[name] = model
 
-    return fitted, metrics, ModelArtifacts(X_train, y_train, X_test, y_test)
+    return fitted, metrics, ModelArtifacts(X_train, y_train, X_test, y_test, groups_train, groups_test)
 
 
 def save_model(model: Any, path: Path) -> Path:
@@ -91,3 +122,37 @@ def save_model(model: Any, path: Path) -> Path:
     joblib.dump(model, path)
     logger.info("Saved model to %s", path)
     return path
+
+
+def _train_test_split(
+    X: pd.DataFrame,
+    y: pd.Series,
+    test_size: float,
+    random_state: int,
+    strategy: str = "stratified",
+    groups: Optional[pd.Series] = None,
+):
+    """Perform train/test split with optional group awareness."""
+    if strategy == "group" and groups is not None:
+        splitter = GroupShuffleSplit(n_splits=1, test_size=test_size, random_state=random_state)
+        train_idx, test_idx = next(splitter.split(X, y, groups))
+        return (
+            X.iloc[train_idx],
+            X.iloc[test_idx],
+            y.iloc[train_idx],
+            y.iloc[test_idx],
+            groups.iloc[train_idx],
+            groups.iloc[test_idx],
+        )
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, stratify=y, random_state=random_state
+    )
+    return X_train, X_test, y_train, y_test, None, None
+
+
+def _make_cv(cv_folds: int, random_state: int, strategy: str, groups: Optional[pd.Series]):
+    """Return a CV splitter respecting strategy."""
+    if strategy == "group" and groups is not None:
+        return GroupKFold(n_splits=cv_folds)
+    return StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=random_state)

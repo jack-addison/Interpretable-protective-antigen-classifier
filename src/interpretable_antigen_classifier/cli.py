@@ -8,11 +8,13 @@ from typing import Optional
 
 from interpretable_antigen_classifier import config
 from interpretable_antigen_classifier.data.ingest import load_labeled_sequences
+from interpretable_antigen_classifier.data.validation import log_dataset_summary, summarize_dataset
 from interpretable_antigen_classifier.evaluation.metrics import save_metrics
 from interpretable_antigen_classifier.features.extract import build_feature_table
 from interpretable_antigen_classifier.interpretability.explain import (
     compute_shap_summary,
     extract_feature_importances,
+    plot_feature_importances,
     permutation_importance_report,
     save_feature_importances,
 )
@@ -30,6 +32,12 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument("--skip-psortb", action="store_true", help="Skip PSORTb feature extraction")
     parser.add_argument("--skip-shap", action="store_true", help="Skip SHAP computation")
     parser.add_argument("--use-xgboost", action="store_true", help="Train XGBoost model if dependency is installed")
+    parser.add_argument("--split-strategy", choices=["stratified", "group"], default="stratified", help="Train/test split strategy")
+    parser.add_argument("--group-column", type=str, default=config.DEFAULT_ORGANISM_COLUMN, help="Column to use for group splits")
+    parser.add_argument("--cv-folds", type=int, default=0, help="Optional cross-validation folds (0 to disable)")
+    parser.add_argument("--disable-kmers", action="store_true", help="Disable k-mer feature generation")
+    parser.add_argument("--kmer-sizes", type=int, nargs="+", default=[2, 3], help="k-mer sizes to include")
+    parser.add_argument("--kmer-top-n", type=int, default=256, help="Top N k-mers per size to keep")
     return parser.parse_args(argv)
 
 
@@ -44,10 +52,26 @@ def main(argv: Optional[list[str]] = None) -> int:
         logger.error("Labeled dataset missing. See README.md for preparation instructions.")
         return 1
 
-    features, labels = build_feature_table(data, skip_psortb=args.skip_psortb)
+    log_dataset_summary(data)
+
+    features, labels = build_feature_table(
+        data,
+        skip_psortb=args.skip_psortb,
+        use_kmers=not args.disable_kmers,
+        kmer_sizes=tuple(args.kmer_sizes) if args.kmer_sizes else (),
+        kmer_top_n=args.kmer_top_n,
+    )
     if features.empty:
         logger.error("No features were generated; ensure sequences are present in the dataset.")
         return 1
+
+    groups = None
+    if args.split_strategy == "group":
+        if args.group_column in data.columns:
+            groups = data[args.group_column]
+        else:
+            logger.warning("Group column %s not found; falling back to stratified split.", args.group_column)
+            args.split_strategy = "stratified"
 
     models, metrics, splits = train_baseline_models(
         features,
@@ -55,6 +79,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         test_size=args.test_size,
         random_state=args.random_state,
         use_xgboost=args.use_xgboost,
+        split_strategy=args.split_strategy,
+        groups=groups,
+        cv_folds=args.cv_folds,
     )
 
     best_model_name = max(metrics.keys(), key=lambda k: metrics[k].get("roc_auc", float("-inf")))
@@ -63,6 +90,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     metrics_output = {
         "best_model": best_model_name,
         "models": metrics,
+        "data_summary": summarize_dataset(data),
     }
     save_metrics(metrics_output, results_dir / "metrics.json")
 
@@ -72,6 +100,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     feature_importances = extract_feature_importances(best_model, list(features.columns))
     if not feature_importances.empty:
         save_feature_importances(feature_importances, results_dir / "feature_importances.csv")
+        plot_feature_importances(feature_importances, results_dir / "feature_importances.png", top_n=25)
     else:
         logger.info("No feature importances available for model %s", best_model_name)
 

@@ -57,12 +57,22 @@ CLI flags:
 - `--skip-psortb` to bypass PSORTb feature attempts (default auto-detects if PSORTb is installed).
 - `--skip-shap` to skip SHAP; permutation importance is used otherwise.
 - `--test-size` and `--random-state` to control the split.
+- `--split-strategy stratified|group` and `--group-column organism` for organism-aware splits.
+- `--cv-folds N` to add a light cross-validation evaluation (0 to disable).
+- `--disable-kmers`, `--kmer-sizes 2 3`, `--kmer-top-n 256` to control k-mer feature generation.
 
 Outputs (written to `results/`):
 - `metrics.json` – ROC-AUC, PR-AUC, and split info.
 - `feature_importances.csv` – model-derived importances.
 - `shap_summary.png` (if SHAP available) or `permutation_importance.csv`.
 - Trained model pickle under `artifacts/` (placeholder path configurable in `config.py`).
+- `feature_importances.png` – quick bar plot of top importances.
+
+## Features (current)
+- Sequence length, amino-acid composition, hydrophobic/charge fractions.
+- Aromatic/aliphatic fractions, approximate molecular weight, simple net charge estimate.
+- k-mer frequencies (default 2-mer + 3-mer, top-N per size, length-normalized).
+- Optional PSORTb localisation (stubbed; auto-skipped if unavailable).
 
 ## Graceful degradation
 - If PSORTb or SHAP are unavailable, the pipeline logs a warning and continues with available features/interpretability methods.
