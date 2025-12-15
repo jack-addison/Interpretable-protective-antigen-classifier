@@ -1,0 +1,68 @@
+# Interpretable Protective Antigen Classifier
+
+A lightweight, reproducible pipeline for training interpretable classifiers that distinguish protective antigens (positives) from non-protective proteins (negatives) using protein sequences and biologically motivated features.
+
+## Goals
+- Curate positives from Protegen and construct a matched negative set from bacterial proteomes.
+- Extract sequence-derived features (length, amino-acid composition, k-mers, simple physicochemical proxies) with optional PSORTb localisation features.
+- Train baseline models (logistic regression, random forest; optional XGBoost) with stratified or group-aware splits.
+- Produce evaluation metrics (ROC-AUC, PR-AUC) and interpretable outputs (feature importances, SHAP summary if available).
+- One-command pipeline (`antigen-pipeline`) that prepares data, trains, evaluates, and writes results to `results/`.
+
+## Repository layout
+- `src/interpretable_antigen_classifier/` – package code.
+  - `data/ingest.py` – stubs for downloading/assembling curated datasets.
+  - `features/extract.py` – sequence feature computation and optional PSORTb integration.
+  - `models/train.py` – model training utilities and pipelines.
+  - `evaluation/metrics.py` – metrics calculation and persistence.
+  - `interpretability/explain.py` – feature importance, SHAP or permutation-based fallbacks.
+  - `utils/` – configuration and logging helpers.
+- `data/` – place raw and processed data (`raw/`, `processed/`).
+- `results/` – model outputs, metrics, and plots.
+
+## Setup
+1. Create an environment (Python 3.10+ recommended) and install dependencies:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -e .
+   # Optional extras
+   pip install .[shap]
+   pip install .[xgboost]
+   ```
+
+## Data preparation
+- **Positives (Protegen):** Use `download_protegen_dataset` stub in `data/ingest.py` as guidance. You will likely need to manually download the Protegen export (FASTA/CSV) and place it under `data/raw/protegen.fasta` (or update `config.py`).
+- **Negatives (non-protective proteins):** Sample bacterial proteomes matched by length and organism where possible. See `sample_negative_proteins` in `data/ingest.py` for the workflow; provide your own proteome FASTA files under `data/raw/`.
+- **Unified labeled table:** After curation, produce a CSV at `data/processed/labeled_sequences.csv` with columns: `protein_id`, `label` (`1` protective, `0` non-protective), `organism`, `source`, `sequence`.
+
+The CLI will check for this processed CSV and exit with guidance if it is missing.
+
+## Running the pipeline
+Once `data/processed/labeled_sequences.csv` exists:
+```bash
+antigen-pipeline --results-dir results/
+# Or explicitly run
+python -m interpretable_antigen_classifier.cli --results-dir results/
+```
+
+CLI flags:
+- `--skip-psortb` to bypass PSORTb feature attempts (default auto-detects if PSORTb is installed).
+- `--skip-shap` to skip SHAP; permutation importance is used otherwise.
+- `--test-size` and `--random-state` to control the split.
+
+Outputs (written to `results/`):
+- `metrics.json` – ROC-AUC, PR-AUC, and split info.
+- `feature_importances.csv` – model-derived importances.
+- `shap_summary.png` (if SHAP available) or `permutation_importance.csv`.
+- Trained model pickle under `artifacts/` (placeholder path configurable in `config.py`).
+
+## Graceful degradation
+- If PSORTb or SHAP are unavailable, the pipeline logs a warning and continues with available features/interpretability methods.
+- If data are missing, the CLI exits after printing the required files and locations.
+
+## Next steps / TODOs
+- Fill in `data/ingest.py` with actual download/parsing code for Protegen and proteomes.
+- Expand feature extraction with k-mers and physicochemical properties.
+- Add cross-validation and organism-aware splits.
+- Add tests and CI for the pipeline functions.
