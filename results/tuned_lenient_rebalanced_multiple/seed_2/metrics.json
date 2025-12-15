@@ -1,0 +1,80 @@
+{
+  "seed": 2,
+  "best_model": "xgboost",
+  "models": {
+    "log_reg": {
+      "roc_auc": 0.8402203856749312,
+      "pr_auc": 0.7648973501246229,
+      "n_train": 176,
+      "n_test": 44,
+      "split_strategy": "stratified",
+      "tuned_params": {
+        "model__C": 10.0,
+        "model__penalty": "l2",
+        "model__class_weight": "balanced"
+      }
+    },
+    "random_forest": {
+      "roc_auc": 0.9256198347107438,
+      "pr_auc": 0.8259601509601511,
+      "n_train": 176,
+      "n_test": 44,
+      "split_strategy": "stratified",
+      "tuned_params": {
+        "n_estimators": 400,
+        "max_depth": null
+      }
+    },
+    "xgboost": {
+      "roc_auc": 0.933884297520661,
+      "pr_auc": 0.9242424242424243,
+      "n_train": 176,
+      "n_test": 44,
+      "split_strategy": "stratified",
+      "tuned_params": {
+        "n_estimators": 300,
+        "learning_rate": 0.05,
+        "max_depth": 5
+      }
+    }
+  },
+  "data_summary": {
+    "n_rows": 220,
+    "class_counts": {
+      "0": 165,
+      "1": 55
+    },
+    "length_stats": {
+      "count": 220.0,
+      "mean": 540.0136363636364,
+      "std": 475.1575607898475,
+      "min": 68.0,
+      "25%": 221.25,
+      "50%": 359.5,
+      "75%": 735.0,
+      "max": 3432.0
+    },
+    "empty_sequences": 0,
+    "duplicate_ids": 0,
+    "duplicate_sequences": 0,
+    "top_organisms": {
+      "Staphylococcus aureus": 165,
+      "unknown": 51,
+      "Brucella abortus": 1,
+      "Brucella": 1,
+      "Yellow fever virus": 1,
+      "Yersinia pestis KIM": 1
+    }
+  },
+  "dedup_report": {
+    "dropped_conflicting_labels": 0,
+    "dropped_conflicting_ids": 1518,
+    "dropped_duplicate_rows": 0,
+    "dropped_duplicate_sequences": 0
+  },
+  "rebalance_report": {
+    "negatives_before": 1652,
+    "negatives_after": 165,
+    "positives": 55
+  }
+}

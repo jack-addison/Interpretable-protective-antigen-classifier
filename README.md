@@ -63,6 +63,8 @@ CLI flags:
 - `--disable-xgboost` to skip XGBoost even if installed (it is attempted by default).
 - `--shap-top-n`, `--perm-top-n` to control interpretability plots.
 - `--tune-hyperparameters` to run a small sweep for RF/XGBoost/logreg before final training.
+- `--dedup-mode strict|lenient` and `--negative-multiplier 3` to control deduplication and post-dedup negative rebalance.
+- `--rebalance-seeds 1 2 3` to repeat rebalance/train across seeds and save aggregated metrics.
 
 Outputs (written to `results/`):
 - `metrics.json` – ROC-AUC, PR-AUC, and split info (plus dataset summary stats).

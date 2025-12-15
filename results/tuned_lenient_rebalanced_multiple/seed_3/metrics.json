@@ -1,11 +1,12 @@
 {
-  "best_model": "random_forest",
+  "seed": 3,
+  "best_model": "xgboost",
   "models": {
     "log_reg": {
-      "roc_auc": 0.8779456193353474,
-      "pr_auc": 0.3637530976914047,
-      "n_train": 1363,
-      "n_test": 341,
+      "roc_auc": 0.9146005509641874,
+      "pr_auc": 0.8155723905723906,
+      "n_train": 176,
+      "n_test": 44,
       "split_strategy": "stratified",
       "tuned_params": {
         "model__C": 0.1,
@@ -14,21 +15,21 @@
       }
     },
     "random_forest": {
-      "roc_auc": 0.8870090634441088,
-      "pr_auc": 0.32707408574845115,
-      "n_train": 1363,
-      "n_test": 341,
+      "roc_auc": 0.9449035812672176,
+      "pr_auc": 0.8854514039920739,
+      "n_train": 176,
+      "n_test": 44,
       "split_strategy": "stratified",
       "tuned_params": {
         "n_estimators": 200,
-        "max_depth": 12
+        "max_depth": null
       }
     },
     "xgboost": {
-      "roc_auc": 0.8181268882175227,
-      "pr_auc": 0.42659130198751716,
-      "n_train": 1363,
-      "n_test": 341,
+      "roc_auc": 0.9504132231404958,
+      "pr_auc": 0.9233100233100233,
+      "n_train": 176,
+      "n_test": 44,
       "split_strategy": "stratified",
       "tuned_params": {
         "n_estimators": 300,
@@ -38,27 +39,28 @@
     }
   },
   "data_summary": {
-    "n_rows": 1704,
+    "n_rows": 220,
     "class_counts": {
-      "0": 1652,
-      "1": 52
+      "0": 165,
+      "1": 55
     },
     "length_stats": {
-      "count": 1704.0,
-      "mean": 459.8086854460094,
-      "std": 379.03497982582707,
-      "min": 68.0,
-      "25%": 212.0,
-      "50%": 364.0,
-      "75%": 591.0,
+      "count": 220.0,
+      "mean": 540.4136363636363,
+      "std": 486.2324798599275,
+      "min": 92.0,
+      "25%": 227.5,
+      "50%": 349.5,
+      "75%": 704.75,
       "max": 3432.0
     },
     "empty_sequences": 0,
     "duplicate_ids": 0,
     "duplicate_sequences": 0,
     "top_organisms": {
-      "Staphylococcus aureus": 1652,
-      "unknown": 49,
+      "Staphylococcus aureus": 165,
+      "unknown": 51,
+      "Brucella abortus": 1,
       "Brucella": 1,
       "Yellow fever virus": 1,
       "Yersinia pestis KIM": 1
@@ -66,8 +68,13 @@
   },
   "dedup_report": {
     "dropped_conflicting_labels": 0,
-    "dropped_conflicting_ids": 1521,
+    "dropped_conflicting_ids": 1518,
     "dropped_duplicate_rows": 0,
     "dropped_duplicate_sequences": 0
+  },
+  "rebalance_report": {
+    "negatives_before": 1652,
+    "negatives_after": 165,
+    "positives": 55
   }
 }
