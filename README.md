@@ -82,9 +82,3 @@ Outputs (written to `results/`):
 ## Graceful degradation
 - If PSORTb or SHAP are unavailable, the pipeline logs a warning and continues with available features/interpretability methods.
 - If data are missing, the CLI exits after printing the required files and locations.
-
-## Next steps / TODOs
-- Fill in `data/ingest.py` with actual download/parsing code for Protegen and proteomes.
-- Expand feature extraction with k-mers and physicochemical properties.
-- Add cross-validation and organism-aware splits.
-- Add tests and CI for the pipeline functions.
