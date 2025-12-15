@@ -61,6 +61,8 @@ CLI flags:
 - `--cv-folds N` to add a light cross-validation evaluation (0 to disable).
 - `--disable-kmers`, `--kmer-sizes 2 3`, `--kmer-top-n 256` to control k-mer feature generation.
 - `--disable-xgboost` to skip XGBoost even if installed (it is attempted by default).
+- `--shap-top-n`, `--perm-top-n` to control interpretability plots.
+- `--tune-hyperparameters` to run a small sweep for RF/XGBoost/logreg before final training.
 
 Outputs (written to `results/`):
 - `metrics.json` – ROC-AUC, PR-AUC, and split info (plus dataset summary stats).

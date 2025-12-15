@@ -41,6 +41,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument("--kmer-top-n", type=int, default=256, help="Top N k-mers per size to keep")
     parser.add_argument("--shap-top-n", type=int, default=25, help="Top features to display in SHAP beeswarm")
     parser.add_argument("--perm-top-n", type=int, default=25, help="Top features to plot for permutation importance")
+    parser.add_argument("--tune-hyperparameters", action="store_true", help="Run a small hyperparameter sweep for models")
     return parser.parse_args(argv)
 
 
@@ -90,6 +91,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         split_strategy=args.split_strategy,
         groups=groups,
         cv_folds=args.cv_folds,
+        tune_hyperparameters=args.tune_hyperparameters,
     )
 
     best_model_name = max(metrics.keys(), key=lambda k: metrics[k].get("roc_auc", float("-inf")))

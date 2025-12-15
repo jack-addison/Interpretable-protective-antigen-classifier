@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, NamedTuple, Optional
+from typing import Any, Dict, NamedTuple, Optional, cast
 
 import joblib
 import pandas as pd
+from sklearn.base import clone
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import (
@@ -45,6 +46,7 @@ def train_baseline_models(
     split_strategy: str = "stratified",
     groups: Optional[pd.Series] = None,
     cv_folds: int = 0,
+    tune_hyperparameters: bool = False,
 ) -> tuple[Dict[str, Any], Dict[str, Dict[str, Any]], ModelArtifacts]:
     """Train baseline classifiers and return fitted models and metrics."""
     split = _train_test_split(
@@ -103,6 +105,12 @@ def train_baseline_models(
     metrics: Dict[str, Dict[str, Any]] = {}
 
     for name, model in candidate_models.items():
+        if tune_hyperparameters:
+            tuned_model, tuned_params = _tune_model(name, model, X_train, y_train, random_state)
+            model = tuned_model
+        else:
+            tuned_params = {}
+
         logger.info("Training model: %s", name)
         model.fit(X_train, y_train)
         y_score = model.predict_proba(X_test)[:, 1]
@@ -110,6 +118,8 @@ def train_baseline_models(
         metrics[name]["n_train"] = int(len(X_train))
         metrics[name]["n_test"] = int(len(X_test))
         metrics[name]["split_strategy"] = split_strategy
+        if tuned_params:
+            metrics[name]["tuned_params"] = tuned_params
 
         if cv_folds and cv_folds > 1 and y.nunique() >= 2:
             cv_groups = groups if split_strategy == "group" else None
@@ -172,3 +182,70 @@ def _make_cv(cv_folds: int, random_state: int, strategy: str, groups: Optional[p
     if strategy == "group" and groups is not None:
         return GroupKFold(n_splits=cv_folds)
     return StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=random_state)
+
+
+def _tune_model(
+    name: str,
+    model: Any,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    random_state: int,
+) -> tuple[Any, Dict[str, Any]]:
+    """Run a lightweight hyperparameter sweep and return the best-fitted model."""
+    param_grid: Dict[str, list[Dict[str, Any]]] = {
+        "log_reg": [
+            {"model__C": c, "model__penalty": "l2", "model__class_weight": "balanced"}
+            for c in (0.1, 1.0, 10.0)
+        ],
+        "random_forest": [
+            {"n_estimators": n, "max_depth": d}
+            for n in (200, 400)
+            for d in (None, 12)
+        ],
+        "xgboost": [
+            {"n_estimators": n, "learning_rate": lr, "max_depth": d}
+            for n in (300, 500)
+            for lr in (0.05, 0.1)
+            for d in (5, 7)
+        ],
+    }
+
+    if name not in param_grid:
+        return model, {}
+
+    try:
+        X_sub, X_val, y_sub, y_val = train_test_split(
+            X_train, y_train, test_size=0.2, stratify=y_train, random_state=random_state
+        )
+    except ValueError:
+        logger.warning("Skipping hyperparameter tuning for %s due to split constraints.", name)
+        return model, {}
+
+    best_score = float("-inf")
+    best_params: Dict[str, Any] = {}
+    base = model
+
+    for params in param_grid[name]:
+        candidate = clone(base)
+        try:
+            candidate.set_params(**params)
+            candidate.fit(X_sub, y_sub)
+            score = candidate.predict_proba(X_val)[:, 1]
+            metrics = compute_classification_metrics(y_val.to_numpy(), score)
+            roc = metrics.get("roc_auc", float("-inf"))
+            if roc > best_score:
+                best_score = roc
+                best_params = params
+        except Exception as exc:
+            logger.warning("Tuning failed for %s with params %s: %s", name, params, exc)
+            continue
+
+    if best_params:
+        logger.info("Best params for %s: %s (ROC-AUC=%.3f)", name, best_params, best_score)
+        tuned_model = clone(base).set_params(**best_params)
+        tuned_model.fit(X_train, y_train)
+        return tuned_model, best_params
+
+    logger.info("No tuning improvements found for %s; using default params.", name)
+    base.fit(X_train, y_train)
+    return base, {}

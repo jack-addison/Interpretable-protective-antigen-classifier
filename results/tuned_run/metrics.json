@@ -1,0 +1,72 @@
+{
+  "best_model": "xgboost",
+  "models": {
+    "log_reg": {
+      "roc_auc": 0.9266281866281867,
+      "pr_auc": 0.9212151357179492,
+      "n_train": 2580,
+      "n_test": 645,
+      "split_strategy": "stratified",
+      "tuned_params": {
+        "model__C": 0.1,
+        "model__penalty": "l2",
+        "model__class_weight": "balanced"
+      }
+    },
+    "random_forest": {
+      "roc_auc": 0.955016835016835,
+      "pr_auc": 0.956779633658218,
+      "n_train": 2580,
+      "n_test": 645,
+      "split_strategy": "stratified",
+      "tuned_params": {
+        "n_estimators": 400,
+        "max_depth": 12
+      }
+    },
+    "xgboost": {
+      "roc_auc": 0.9650793650793651,
+      "pr_auc": 0.9702975693938195,
+      "n_train": 2580,
+      "n_test": 645,
+      "split_strategy": "stratified",
+      "tuned_params": {
+        "n_estimators": 500,
+        "learning_rate": 0.05,
+        "max_depth": 5
+      }
+    }
+  },
+  "data_summary": {
+    "n_rows": 3225,
+    "class_counts": {
+      "0": 1652,
+      "1": 1573
+    },
+    "length_stats": {
+      "count": 3225.0,
+      "mean": 468.7212403100775,
+      "std": 414.453004484828,
+      "min": 8.0,
+      "25%": 213.0,
+      "50%": 367.0,
+      "75%": 585.0,
+      "max": 5405.0
+    },
+    "empty_sequences": 0,
+    "duplicate_ids": 1518,
+    "duplicate_sequences": 2,
+    "top_organisms": {
+      "Staphylococcus aureus": 1665,
+      "Homo sapiens": 294,
+      "unknown": 59,
+      "Mus musculus": 43,
+      "Streptococcus pyogenes": 27,
+      "Mycobacterium tuberculosis H37Rv": 23,
+      "Human immunodeficiency virus 1": 23,
+      "Escherichia coli": 21,
+      "Streptococcus agalactiae": 20,
+      "Edwardsiella tarda": 18
+    }
+  }
+}
