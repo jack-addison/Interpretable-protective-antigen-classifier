@@ -102,11 +102,12 @@ CLI flags:
 - `--split-strategy stratified|group` and `--group-column organism` for organism-aware splits.
 - `--cv-folds N` to add a light cross-validation evaluation (0 to disable).
 - `--disable-kmers`, `--kmer-sizes 2 3`, `--kmer-top-n 256` to control k-mer feature generation.
+- `--disable-xgboost` to skip XGBoost even if installed (it is attempted by default).
 
 Outputs (written to `results/`):
-- `metrics.json` – ROC-AUC, PR-AUC, and split info.
+- `metrics.json` – ROC-AUC, PR-AUC, and split info (plus dataset summary stats).
 - `feature_importances.csv` – model-derived importances.
-- `shap_summary.png` (if SHAP available) or `permutation_importance.csv`.
+- `shap_summary.png` (if SHAP available) or `permutation_importance.csv` + `permutation_importance.png`.
 - Trained model pickle under `artifacts/` (placeholder path configurable in `config.py`).
 - `feature_importances.png` – quick bar plot of top importances.
 

@@ -65,7 +65,7 @@ CLI flags:
 Outputs (written to `results/`):
 - `metrics.json` – ROC-AUC, PR-AUC, and split info (plus dataset summary stats).
 - `feature_importances.csv` – model-derived importances.
-- `shap_summary.png` (if SHAP available) or `permutation_importance.csv`.
+- `shap_summary.png` (if SHAP available) or `permutation_importance.csv` + `permutation_importance.png`.
 - Trained model pickle under `artifacts/` (placeholder path configurable in `config.py`).
 - `feature_importances.png` – quick bar plot of top importances.
 

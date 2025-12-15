@@ -15,6 +15,7 @@ from interpretable_antigen_classifier.interpretability.explain import (
     compute_shap_summary,
     extract_feature_importances,
     plot_feature_importances,
+    plot_permutation_importance,
     permutation_importance_report,
     save_feature_importances,
 )
@@ -38,6 +39,8 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument("--disable-kmers", action="store_true", help="Disable k-mer feature generation")
     parser.add_argument("--kmer-sizes", type=int, nargs="+", default=[2, 3], help="k-mer sizes to include")
     parser.add_argument("--kmer-top-n", type=int, default=256, help="Top N k-mers per size to keep")
+    parser.add_argument("--shap-top-n", type=int, default=25, help="Top features to display in SHAP beeswarm")
+    parser.add_argument("--perm-top-n", type=int, default=25, help="Top features to plot for permutation importance")
     return parser.parse_args(argv)
 
 
@@ -111,13 +114,19 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     shap_ok = False
     if not args.skip_shap:
-        shap_ok = compute_shap_summary(best_model, splits.X_test, results_dir / "shap_summary.png")
+        shap_ok = compute_shap_summary(
+            best_model,
+            splits.X_test,
+            results_dir / "shap_summary.png",
+            top_n=args.shap_top_n,
+        )
 
     if not shap_ok:
         perm_df = permutation_importance_report(best_model, splits.X_test, splits.y_test)
         perm_path = results_dir / "permutation_importance.csv"
         perm_df.to_csv(perm_path, index=False)
         logger.info("Saved permutation importance to %s", perm_path)
+        plot_permutation_importance(perm_df, results_dir / "permutation_importance.png", top_n=args.perm_top_n)
 
     logger.info("Pipeline complete. Best model: %s", best_model_name)
     return 0
