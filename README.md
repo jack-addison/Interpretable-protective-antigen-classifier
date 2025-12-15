@@ -32,6 +32,13 @@ A lightweight, reproducible pipeline for training interpretable classifiers that
    ```
 
 ## Data preparation
+- **Quick start with provided FASTAs:** If you have a Protegen FASTA at `data/raw/protegen-*.faa` and one or more proteome FASTAs under `data/raw/proteomes/`, run:
+  ```bash
+  python scripts/prepare_dataset.py \
+    --protegen-path data/raw/protegen-all-4.0-2019-01-09.faa \
+    --proteome-paths data/raw/proteomes/staphylococcus_aureus.faa
+  ```
+  This writes `data/processed/labeled_sequences.csv` with length-matched negatives.
 - **Positives (Protegen):** Use `download_protegen_dataset` stub in `data/ingest.py` as guidance. You will likely need to manually download the Protegen export (FASTA/CSV) and place it under `data/raw/protegen.fasta` (or update `config.py`).
 - **Negatives (non-protective proteins):** Sample bacterial proteomes matched by length and organism where possible. See `sample_negative_proteins` in `data/ingest.py` for the workflow; provide your own proteome FASTA files under `data/raw/`.
 - **Unified labeled table:** After curation, produce a CSV at `data/processed/labeled_sequences.csv` with columns: `protein_id`, `label` (`1` protective, `0` non-protective), `organism`, `source`, `sequence`.
