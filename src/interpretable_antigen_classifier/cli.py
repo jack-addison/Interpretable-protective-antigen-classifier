@@ -17,6 +17,7 @@ from interpretable_antigen_classifier.interpretability.explain import (
     compute_shap_summary,
     extract_feature_importances,
     plot_feature_importances,
+    plot_aggregated_metrics_bar,
     plot_permutation_importance,
     permutation_importance_report,
     save_feature_importances,
@@ -184,6 +185,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     if multi_seed:
         aggregated = _aggregate_seed_metrics(per_seed_metrics)
         save_metrics(aggregated, results_dir / "aggregated_metrics.json")
+        agg_models = aggregated.get("aggregated", {}).get("models", {})
+        if agg_models:
+            plot_aggregated_metrics_bar(agg_models, results_dir / "aggregated_metrics.png", metric="roc_auc")
 
     logger.info("Pipeline complete.")
     return 0

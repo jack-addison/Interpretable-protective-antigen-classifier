@@ -72,6 +72,7 @@ Outputs (written to `results/`):
 - `shap_summary.png` (if SHAP available) or `permutation_importance.csv` + `permutation_importance.png`.
 - Trained model pickle under `artifacts/` (placeholder path configurable in `config.py`).
 - `feature_importances.png` – quick bar plot of top importances.
+- `aggregated_metrics.json` + `aggregated_metrics.png` when multiple seeds are provided (`--rebalance-seeds`).
 
 ## Features (current)
 - Sequence length, amino-acid composition, hydrophobic/charge fractions.

@@ -132,6 +132,40 @@ def plot_permutation_importance(perm_df: pd.DataFrame, path: Path, top_n: int = 
     logger.info("Saved permutation importance plot to %s", path)
 
 
+def plot_aggregated_metrics_bar(
+    aggregated_models: Dict[str, Dict[str, float]], path: Path, metric: str = "roc_auc"
+) -> None:
+    """Plot mean/std metrics across seeds for each model."""
+    if not aggregated_models:
+        logger.info("No aggregated metrics to plot.")
+        return
+
+    model_names = []
+    means = []
+    stds = []
+    for name, vals in aggregated_models.items():
+        mean_key = f"{metric}_mean"
+        std_key = f"{metric}_std"
+        if mean_key in vals:
+            model_names.append(name)
+            means.append(vals.get(mean_key, np.nan))
+            stds.append(vals.get(std_key, 0.0))
+
+    if not model_names:
+        logger.info("Aggregated metrics missing mean values for metric %s.", metric)
+        return
+
+    plt.figure(figsize=(6, 4))
+    plt.bar(model_names, means, yerr=stds, color="slateblue", alpha=0.8, capsize=5)
+    plt.ylabel(metric.upper())
+    plt.title(f"{metric.upper()} across seeds")
+    plt.tight_layout()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(path, bbox_inches="tight")
+    plt.close()
+    logger.info("Saved aggregated metrics plot to %s", path)
+
+
 def _unwrap_estimator(model: Any) -> Any:
     """Return the final estimator if a Pipeline was provided."""
     if hasattr(model, "steps"):
