@@ -57,7 +57,7 @@ def parse_protegen_header(header: str) -> Tuple[str, str]:
     """Extract protein_id and organism from a Protegen header."""
     parts = header.split("|")
     protein_id = header.split()[0]
-    if len(parts) >= 4:
+    if len(parts) >= 2:
         protein_id = parts[-1].strip().split()[0]
     organism = "unknown"
     if "[" in header and "]" in header:

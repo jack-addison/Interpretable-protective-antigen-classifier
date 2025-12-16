@@ -1,0 +1,84 @@
+{
+  "seed": 42,
+  "best_model": "xgboost",
+  "models": {
+    "log_reg": {
+      "roc_auc": 0.9111278952668682,
+      "pr_auc": 0.9147295342481293,
+      "n_train": 2571,
+      "n_test": 643,
+      "split_strategy": "stratified",
+      "tuned_params": {
+        "model__C": 0.1,
+        "model__penalty": "l2",
+        "model__class_weight": "balanced"
+      }
+    },
+    "random_forest": {
+      "roc_auc": 0.954915175458982,
+      "pr_auc": 0.9552284478060953,
+      "n_train": 2571,
+      "n_test": 643,
+      "split_strategy": "stratified",
+      "tuned_params": {
+        "n_estimators": 400,
+        "max_depth": 12
+      }
+    },
+    "xgboost": {
+      "roc_auc": 0.9665349755984197,
+      "pr_auc": 0.9685089445351963,
+      "n_train": 2571,
+      "n_test": 643,
+      "split_strategy": "stratified",
+      "tuned_params": {
+        "n_estimators": 300,
+        "learning_rate": 0.05,
+        "max_depth": 7
+      }
+    }
+  },
+  "data_summary": {
+    "n_rows": 3214,
+    "class_counts": {
+      "0": 1652,
+      "1": 1562
+    },
+    "length_stats": {
+      "count": 3214.0,
+      "mean": 469.5556938394524,
+      "std": 414.86604902537584,
+      "min": 8.0,
+      "25%": 213.0,
+      "50%": 368.5,
+      "75%": 585.0,
+      "max": 5405.0
+    },
+    "empty_sequences": 0,
+    "duplicate_ids": 0,
+    "duplicate_sequences": 0,
+    "top_organisms": {
+      "Staphylococcus aureus": 1665,
+      "Homo sapiens": 294,
+      "unknown": 49,
+      "Mus musculus": 43,
+      "Streptococcus pyogenes": 27,
+      "Mycobacterium tuberculosis H37Rv": 23,
+      "Human immunodeficiency virus 1": 23,
+      "Escherichia coli": 21,
+      "Streptococcus agalactiae": 20,
+      "Edwardsiella tarda": 18
+    }
+  },
+  "dedup_report": {
+    "dropped_conflicting_labels": 0,
+    "dropped_conflicting_ids": 9,
+    "dropped_duplicate_rows": 0,
+    "dropped_duplicate_sequences": 29
+  },
+  "rebalance_report": {
+    "negatives_before": 0,
+    "negatives_after": 0,
+    "positives": 0
+  }
+}

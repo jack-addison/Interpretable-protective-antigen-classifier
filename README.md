@@ -32,46 +32,38 @@ A lightweight, reproducible pipeline for training interpretable classifiers that
    ```
 
 ## Data preparation
-- **Quick start with provided FASTAs:** If you have a Protegen FASTA at `data/raw/protegen-*.faa` and one or more proteome FASTAs under `data/raw/proteomes/`, run:
+- **Quick start:** With Protegen FASTA at `data/raw/protegen-*.faa` and proteome FASTAs under `data/raw/proteomes/` (`.faa` or `.fasta`), rebuild the processed dataset:
   ```bash
   python scripts/prepare_dataset.py \
     --protegen-path data/raw/protegen-all-4.0-2019-01-09.faa \
-    --proteome-paths data/raw/proteomes/staphylococcus_aureus.faa
+    --proteome-paths data/raw/proteomes/*.faa data/raw/proteomes/*.fasta
   ```
-  This writes `data/processed/labeled_sequences.csv` with length-matched negatives.
-- **Positives (Protegen):** Use `download_protegen_dataset` stub in `data/ingest.py` as guidance. You will likely need to manually download the Protegen export (FASTA/CSV) and place it under `data/raw/protegen.fasta` (or update `config.py`).
-- **Negatives (non-protective proteins):** Sample bacterial proteomes matched by length and organism where possible. See `sample_negative_proteins` in `data/ingest.py` for the workflow; provide your own proteome FASTA files under `data/raw/`.
-- **Unified labeled table:** After curation, produce a CSV at `data/processed/labeled_sequences.csv` with columns: `protein_id`, `label` (`1` protective, `0` non-protective), `organism`, `source`, `sequence`.
-
-The CLI will check for this processed CSV and exit with guidance if it is missing.
+  Overlaps between Protegen and proteomes are removed by ID or exact sequence; IDs are parsed from the last pipe-delimited header token.
+- **Outputs:** `data/processed/labeled_sequences.csv` with columns `protein_id`, `sequence`, `organism`, `source`, `label` (1 protective, 0 negative).
 
 ## Running the pipeline
 Once `data/processed/labeled_sequences.csv` exists:
 ```bash
 antigen-pipeline --results-dir results/
 # Or explicitly run
-python -m interpretable_antigen_classifier.cli --results-dir results/
+PYTHONPATH=src python -m interpretable_antigen_classifier.cli --results-dir results/
 ```
 
-CLI flags:
-- `--skip-psortb` to bypass PSORTb feature attempts (default auto-detects if PSORTb is installed).
-- `--skip-shap` to skip SHAP; permutation importance is used otherwise.
-- `--test-size` and `--random-state` to control the split.
-- `--split-strategy stratified|group` and `--group-column organism` for organism-aware splits.
-- `--cv-folds N` to add a light cross-validation evaluation (0 to disable).
-- `--disable-kmers`, `--kmer-sizes 2 3`, `--kmer-top-n 256` to control k-mer feature generation.
-- `--disable-xgboost` to skip XGBoost even if installed (it is attempted by default).
-- `--shap-top-n`, `--perm-top-n` to control interpretability plots.
+Key flags:
+- `--skip-psortb` / `--skip-shap` to disable optional stages (defaults auto-detect).
+- `--split-strategy stratified|group|matched` (`matched` keeps organisms with both labels and uses group split; `--min-per-label` controls the threshold).
+- `--dedup-mode strict|lenient` and `--negative-multiplier N` to control deduplication and post-dedup negative downsampling (set to 0 to disable).
 - `--tune-hyperparameters` to run a small sweep for RF/XGBoost/logreg before final training.
-- `--dedup-mode strict|lenient` and `--negative-multiplier 3` to control deduplication and post-dedup negative rebalance.
-- `--rebalance-seeds 1 2 3` to repeat rebalance/train across seeds and save aggregated metrics.
+- `--rebalance-seeds 1 2 3` to repeat rebalance/train across seeds and save aggregated metrics/plots.
+- `--disable-kmers`, `--kmer-sizes`, `--kmer-top-n` to control k-mer features; `--disable-xgboost` to skip XGBoost.
+- `--shap-top-n`, `--perm-top-n` to control interpretability plots.
 
 Outputs (written to `results/`):
-- `metrics.json` – ROC-AUC, PR-AUC, and split info (plus dataset summary stats).
-- `feature_importances.csv` – model-derived importances.
+- `metrics.json` – ROC-AUC, PR-AUC, split info, dataset/dedup/rebalance summaries.
+- `feature_importances.csv` / `feature_importances.png`.
 - `shap_summary.png` (if SHAP available) or `permutation_importance.csv` + `permutation_importance.png`.
-- Trained model pickle under `artifacts/` (placeholder path configurable in `config.py`).
-- `feature_importances.png` – quick bar plot of top importances.
+- Trained model pickle under `artifacts/`.
+- `aggregated_metrics.json` + `aggregated_metrics.png` when multiple seeds are provided (`--rebalance-seeds`).
 - `aggregated_metrics.json` + `aggregated_metrics.png` when multiple seeds are provided (`--rebalance-seeds`).
 
 ## Features (current)

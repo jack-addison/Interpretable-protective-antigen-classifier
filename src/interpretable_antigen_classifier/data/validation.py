@@ -43,3 +43,22 @@ def log_dataset_summary(df: pd.DataFrame) -> None:
     )
     if "top_organisms" in summary:
         logger.info("Top organisms (first 10): %s", summary["top_organisms"])
+
+
+def filter_organisms_with_both_labels(
+    df: pd.DataFrame, min_per_label: int = 1
+) -> tuple[pd.DataFrame, dict[str, int]]:
+    """Keep only organisms that have at least min_per_label samples in each class."""
+    if config.DEFAULT_ORGANISM_COLUMN not in df.columns:
+        return df, {"kept": len(df), "dropped": 0, "organisms_kept": 0, "organisms_dropped": 0}
+
+    counts = df.groupby([config.DEFAULT_ORGANISM_COLUMN, config.DEFAULT_TARGET_COLUMN]).size().unstack(fill_value=0)
+    valid_orgs = counts[(counts >= min_per_label).all(axis=1)].index
+    kept = df[df[config.DEFAULT_ORGANISM_COLUMN].isin(valid_orgs)]
+    report = {
+        "kept": len(kept),
+        "dropped": len(df) - len(kept),
+        "organisms_kept": len(valid_orgs),
+        "organisms_dropped": counts.shape[0] - len(valid_orgs),
+    }
+    return kept, report

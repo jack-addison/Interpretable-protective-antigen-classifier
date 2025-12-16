@@ -10,7 +10,11 @@ import numpy as np
 from interpretable_antigen_classifier import config
 from interpretable_antigen_classifier.data.ingest import load_labeled_sequences
 from interpretable_antigen_classifier.data.dedup import deduplicate_sequences, rebalance_negatives_length_matched
-from interpretable_antigen_classifier.data.validation import log_dataset_summary, summarize_dataset
+from interpretable_antigen_classifier.data.validation import (
+    filter_organisms_with_both_labels,
+    log_dataset_summary,
+    summarize_dataset,
+)
 from interpretable_antigen_classifier.evaluation.metrics import save_metrics
 from interpretable_antigen_classifier.features.extract import build_feature_table
 from interpretable_antigen_classifier.interpretability.explain import (
@@ -36,7 +40,12 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument("--skip-psortb", action="store_true", help="Skip PSORTb feature extraction")
     parser.add_argument("--skip-shap", action="store_true", help="Skip SHAP computation")
     parser.add_argument("--disable-xgboost", action="store_true", help="Disable XGBoost even if installed")
-    parser.add_argument("--split-strategy", choices=["stratified", "group"], default="stratified", help="Train/test split strategy")
+    parser.add_argument(
+        "--split-strategy",
+        choices=["stratified", "group", "matched"],
+        default="stratified",
+        help="Train/test split strategy ('matched' filters to organisms with both classes and uses group split)",
+    )
     parser.add_argument("--group-column", type=str, default=config.DEFAULT_ORGANISM_COLUMN, help="Column to use for group splits")
     parser.add_argument("--cv-folds", type=int, default=0, help="Optional cross-validation folds (0 to disable)")
     parser.add_argument("--disable-kmers", action="store_true", help="Disable k-mer feature generation")
@@ -63,6 +72,12 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         nargs="+",
         default=None,
         help="Optional list of seeds to repeat rebalance/train for robustness reporting",
+    )
+    parser.add_argument(
+        "--min-per-label",
+        type=int,
+        default=1,
+        help="Minimum samples per label required to keep an organism in matched-organism split",
     )
     return parser.parse_args(argv)
 
@@ -96,8 +111,27 @@ def main(argv: Optional[list[str]] = None) -> int:
         run_dir = results_dir / f"seed_{seed}" if multi_seed else results_dir
         run_dir.mkdir(parents=True, exist_ok=True)
 
+        # Matched-organism filtering (before rebalancing)
+        data_filtered = data_dedup
+        match_report = None
+        groups = None
+        effective_split_strategy = args.split_strategy
+        if args.split_strategy == "matched":
+            data_filtered, match_report = filter_organisms_with_both_labels(data_filtered, min_per_label=args.min_per_label)
+            if len(data_filtered) == 0:
+                logger.error("No data left after matched-organism filtering.")
+                return 1
+            effective_split_strategy = "group"
+            groups = data_filtered[args.group_column]
+            logger.info(
+                "Matched-organism filter: kept %d rows across %d organisms, dropped %d rows.",
+                match_report["kept"],
+                match_report["organisms_kept"],
+                match_report["dropped"],
+            )
+
         data_rebalanced, rebalance_report = rebalance_negatives_length_matched(
-            data_dedup,
+            data_filtered,
             negative_multiplier=args.negative_multiplier,
             random_state=seed,
         )
@@ -120,22 +154,13 @@ def main(argv: Optional[list[str]] = None) -> int:
             logger.error("No features were generated; ensure sequences are present in the dataset.")
             return 1
 
-        groups = None
-        split_strategy = args.split_strategy
-        if split_strategy == "group":
-            if args.group_column in data_rebalanced.columns:
-                groups = data_rebalanced[args.group_column]
-            else:
-                logger.warning("Group column %s not found; falling back to stratified split.", args.group_column)
-                split_strategy = "stratified"
-
         models, metrics, splits = train_baseline_models(
             features,
             labels,
             test_size=args.test_size,
             random_state=seed,
             use_xgboost=not args.disable_xgboost,
-            split_strategy=split_strategy,
+            split_strategy=effective_split_strategy,
             groups=groups,
             cv_folds=args.cv_folds,
             tune_hyperparameters=args.tune_hyperparameters,
@@ -151,6 +176,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             "data_summary": summarize_dataset(data_rebalanced),
             "dedup_report": dedup_report,
             "rebalance_report": rebalance_report,
+            "match_report": match_report,
         }
         save_metrics(metrics_output, run_dir / "metrics.json")
         per_seed_metrics[str(seed)] = metrics_output
